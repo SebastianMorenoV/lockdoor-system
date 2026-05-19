@@ -1,5 +1,6 @@
 #include <WiFi.h>
 #include <WebServer.h>
+#include <HTTPClient.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -13,8 +14,8 @@
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // --- CREDENTIALS ---
-const char* ssid = "iPhone de Sebastian";
-const char* password = "morita12";
+const char* ssid = "iPhone de Benjamin";
+const char* password = "hambreado123";
 
 // --- TIME CONFIGURATION (NTP) ---
 const char* ntpServer = "pool.ntp.org";
@@ -64,6 +65,12 @@ unsigned long unlockTime = 0;
 bool isUnlocked = false;
 const unsigned long unlockDuration = 5000; // 5 seconds open
 unsigned long lastDisplayUpdate = 0;
+
+// --- BUZZER TOGGLE ---
+bool buzzerActivo = true;
+
+// --- PYTHON SERVER ---
+const String pythonServerIP = "http://172.20.10.8:8000";
 
 void setDisplayMessage(String msg) {
   displayMessage = msg;
@@ -170,7 +177,27 @@ void setup() {
 
   server.on("/unlock", HTTP_GET, []() {
     abrirPuerta();
+    // Se eliminó logAccess("remote", "Web"); para no duplicar el log de la base de datos
     server.send(200, "text/plain", "Abierto"); 
+  });
+
+  server.on("/buzzer", HTTP_GET, []() {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    if (server.hasArg("state")) {
+      String state = server.arg("state");
+      buzzerActivo = (state == "on");
+      // Mantenemos apagado el buzzer siempre si lo desactivan
+      digitalWrite(buzzerPin, HIGH); 
+      server.send(200, "text/plain", buzzerActivo ? "Buzzer ON" : "Buzzer OFF");
+    } else {
+      server.send(200, "text/plain", buzzerActivo ? "on" : "off");
+    }
+  });
+
+  server.on("/status", HTTP_GET, []() {
+    server.sendHeader("Access-Control-Allow-Origin", "*");
+    String json = "{\"locked\":" + String(!isUnlocked ? "true" : "false") + ",\"buzzer\":" + String(buzzerActivo ? "true" : "false") + "}";
+    server.send(200, "application/json", json);
   });
 
   server.begin();
@@ -182,9 +209,7 @@ void abrirPuerta() {
     digitalWrite(ledPin, HIGH);    
     digitalWrite(redLedPin, LOW);  
     
-    digitalWrite(buzzerPin, LOW);  
-    delay(1000); 
-    digitalWrite(buzzerPin, HIGH); 
+    // Se eliminó el sonido de apertura a petición del usuario.
     
     unlockTime = millis();
     isUnlocked = true;
@@ -193,9 +218,35 @@ void abrirPuerta() {
 }
 
 void beepBuzzer(int duration) {
+  if (!buzzerActivo) return;
   digitalWrite(buzzerPin, LOW);
   delay(duration);
   digitalWrite(buzzerPin, HIGH);
+}
+
+void logAccess(String method, String userName) {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(pythonServerIP + "/log_access");
+    http.addHeader("Content-Type", "application/json");
+    String body = "{\"user_name\":\"" + userName + "\",\"method\":\"" + method + "\",\"granted\":true}";
+    http.POST(body);
+    http.end();
+  }
+}
+
+bool verifyPinOnline(String pin) {
+  if (WiFi.status() != WL_CONNECTED) return false;
+  HTTPClient http;
+  http.begin(pythonServerIP + "/verify_pin?pin=" + pin);
+  int httpCode = http.GET();
+  if (httpCode == 200) {
+    String response = http.getString();
+    http.end();
+    return response.indexOf("\"match\":true") >= 0;
+  }
+  http.end();
+  return false;
 }
 
 void loop() {
@@ -218,8 +269,39 @@ void loop() {
     } 
     else if (key == '#') {
       if (currentMode == NORMAL) {
-        if (inputBuffer == currentPassword) {
+        // Try online verification first, fallback to local
+        bool accessGranted = false;
+        String userName = "PIN-User";
+        
+        // Check against Python/MySQL server
+        if (WiFi.status() == WL_CONNECTED) {
+          HTTPClient http;
+          http.begin(pythonServerIP + "/verify_pin?pin=" + inputBuffer);
+          int httpCode = http.GET();
+          if (httpCode == 200) {
+            String response = http.getString();
+            if (response.indexOf("\"match\":true") >= 0) {
+              // Extract user name from response
+              int nameStart = response.indexOf("\"name\":\"") + 8;
+              int nameEnd = response.indexOf("\"", nameStart);
+              if (nameStart > 7 && nameEnd > nameStart) {
+                userName = response.substring(nameStart, nameEnd);
+              }
+              accessGranted = true;
+            }
+          }
+          http.end();
+        }
+        
+        // Fallback to local password
+        if (!accessGranted && inputBuffer == currentPassword) {
+          accessGranted = true;
+          userName = "Local";
+        }
+        
+        if (accessGranted) {
           abrirPuerta();
+          logAccess("pin", userName);
         } else {
           setDisplayMessage("Error: Pw Falsa");
           beepBuzzer(500); // Long beep for error
@@ -260,16 +342,17 @@ void loop() {
     lastDisplayUpdate = millis();
   }
   
-  // Physical door alarm logic
-  if (digitalRead(irSensorPin) == HIGH && !isUnlocked) {
-    digitalWrite(buzzerPin, LOW);  
-  } else if (digitalRead(irSensorPin) == LOW && !isUnlocked) {
-    digitalWrite(buzzerPin, HIGH); 
+  // Physical door alarm logic (INVERTED: LOW = door open = alarm)
+  if (digitalRead(irSensorPin) == LOW && !isUnlocked) {
+    if (buzzerActivo) digitalWrite(buzzerPin, LOW);  // alarm ON
+  } else if (digitalRead(irSensorPin) == HIGH && !isUnlocked) {
+    digitalWrite(buzzerPin, HIGH); // alarm OFF
   }
   
   // Manual button
   if (digitalRead(buttonPin) == LOW && !isUnlocked) {
     abrirPuerta();
+    logAccess("button", "Fisico");
     delay(200); 
   }
   
@@ -277,7 +360,9 @@ void loop() {
   if (isUnlocked && (millis() - unlockTime >= unlockDuration)) {
     digitalWrite(relayPin, RELAY_BLOQUEADO); 
     digitalWrite(ledPin, LOW);               
-    digitalWrite(redLedPin, HIGH);              
-    isUnlocked = false;          
+    digitalWrite(redLedPin, HIGH);
+    digitalWrite(buzzerPin, HIGH); // Ensure buzzer is OFF before re-locking
+    isUnlocked = false;
+    delay(500); // Debounce: let relay and IR sensor stabilize
   }
 }

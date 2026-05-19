@@ -23,9 +23,11 @@ const DoorAccess = () => {
       if (data.status === "success") {
         if (data.match) {
           // ¡HAY MATCH!
-          setStatus(`🟢 ¡Acceso Concedido, ${data.name}! Abriendo puerta...`);
-
-          // ---> ¡AQUÍ ES DONDE LLAMAREMOS AL ESP32 DESPUÉS! <---
+          if (data.hardware_reached) {
+            setStatus(`🟢 ¡Acceso Concedido, ${data.name}! Puerta abierta ✅`);
+          } else {
+            setStatus(`⚠️ Reconocido (${data.name}), pero error al abrir chapa. ¿ESP32 encendido?`);
+          }
         } else {
           // NO HAY MATCH
           setStatus("🔴 Acceso Denegado. Rostro no reconocido.");
