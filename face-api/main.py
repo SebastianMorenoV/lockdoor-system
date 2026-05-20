@@ -55,8 +55,8 @@ def get_db():
     """Get a fresh MySQL connection"""
     return mysql.connector.connect(**DB_CONFIG)
 
-# --- ESP32 CONFIG ---
-ESP32_IP = "http://172.20.10.11"
+
+ESP32_IP = "http://192.168.100.20"
 
 # --- MEMORIA DEL SISTEMA ---
 # Aquí guardaremos las "matemáticas" de las caras autorizadas

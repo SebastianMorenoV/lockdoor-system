@@ -14,8 +14,8 @@
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // --- CREDENTIALS ---
-const char* ssid = "iPhone de Benjamin";
-const char* password = "hambreado123";
+const char* ssid = "Casa 2.4G Modem";
+const char* password = "Sebasguapo2005";
 
 // --- TIME CONFIGURATION (NTP) ---
 const char* ntpServer = "pool.ntp.org";
@@ -70,7 +70,7 @@ unsigned long lastDisplayUpdate = 0;
 bool buzzerActivo = true;
 
 // --- PYTHON SERVER ---
-const String pythonServerIP = "http://172.20.10.8:8000";
+const String pythonServerIP = "http://192.168.100.92:8000";
 
 void setDisplayMessage(String msg) {
   displayMessage = msg;
@@ -79,20 +79,22 @@ void setDisplayMessage(String msg) {
 
 void actualizarEstadoOLED() {
   struct tm timeinfo;
-  if(!getLocalTime(&timeinfo)){
-    return;
+  // Añadimos un timeout de 10 milisegundos para que no se congele buscando la hora
+  bool timeValid = getLocalTime(&timeinfo, 10);
+
+  char horaActual[10] = "--:--";
+  char fechaActual[20] = "--/--/----";
+  String saludo = "BIENVENIDO";
+
+  if (timeValid) {
+    strftime(horaActual, sizeof(horaActual), "%H:%M", &timeinfo);
+    strftime(fechaActual, sizeof(fechaActual), "%d/%m/%Y", &timeinfo);
+
+    int hora = timeinfo.tm_hour;
+    if (hora >= 6 && hora < 12) saludo = "BUENOS DIAS";
+    else if (hora >= 12 && hora < 19) saludo = "BUENAS TARDES";
+    else saludo = "BUENAS NOCHES";
   }
-
-  char horaActual[10];
-  strftime(horaActual, sizeof(horaActual), "%H:%M", &timeinfo);
-  char fechaActual[20];
-  strftime(fechaActual, sizeof(fechaActual), "%d/%m/%Y", &timeinfo);
-
-  int hora = timeinfo.tm_hour;
-  String saludo;
-  if (hora >= 6 && hora < 12) saludo = "BUENOS DIAS";
-  else if (hora >= 12 && hora < 19) saludo = "BUENAS TARDES";
-  else saludo = "BUENAS NOCHES";
 
   bool isPhysicallyOpen = (digitalRead(irSensorPin) == HIGH);
 
