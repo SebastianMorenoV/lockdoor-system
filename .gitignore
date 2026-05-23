@@ -12,3 +12,7 @@ node_modules/
 # Editores y SO
 .vscode/
 .DS_Store
+
+# Archivos propios del sistema
+authorized_faces/
+*.log

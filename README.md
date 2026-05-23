@@ -1,6 +1,18 @@
 <h1 align="center">LockDoor System 🚪</h1>
 
 <p align="center">
+  <img src="download.gif" alt="LockDoor Demo" width="600"/>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10+-blue.svg" alt="Python Version"/>
+  <img src="https://img.shields.io/badge/React-19-61dafb.svg?logo=react&logoColor=black" alt="React"/>
+  <img src="https://img.shields.io/badge/ESP32-Hardware-red.svg" alt="ESP32"/>
+  <img src="https://img.shields.io/badge/FastAPI-Backend-009688.svg?logo=fastapi&logoColor=white" alt="FastAPI"/>
+  <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"/>
+</p>
+
+<p align="center">
   <strong>Un sistema de control de acceso inteligente basado en ESP32 con Reconocimiento Facial, PIN y Administración Web.</strong>
 </p>
 
@@ -158,5 +170,12 @@ La aplicación estará disponible en `http://localhost:5173`. Asegúrate de que 
 ---
 
 ## 📹 Video de Demostración
-Puedes ver un video del sistema en funcionamiento aquí:
+Puedes ver un video completo del sistema en funcionamiento aquí:
 [Ver Funcionamiento del LockDoor System](https://drive.google.com/file/d/1c9ymSRzL5OwOYsbKE-TpPTTmx2G9IWRE/view?usp=drive_link)
+
+---
+
+## 👨‍💻 Acerca del Creador
+Creado por **Sebastian Moreno**. 
+
+Si este proyecto te sirvió o te pareció interesante, dale una ⭐️ al repositorio y sígueme para más inventos increíbles. ¡Tu apoyo me motiva a seguir creando proyectos Open Source!
