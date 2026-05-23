@@ -1,3 +1,14 @@
+// ==============================================================================
+// LockDoor System - Firmware ESP32
+// ==============================================================================
+// Este código corre en el microcontrolador ESP32. 
+// Funciones principales:
+// 1. Manejar el hardware físico: Relé (Cerradura), Teclado 4x4, Pantalla OLED, Sensor IR.
+// 2. Levantar un servidor web interno (puerto 80) para que Python pueda enviarle 
+//    una orden de "abrir" cuando detecte una cara correcta.
+// 3. Comunicarse con el servidor de Python para validar un PIN ingresado en el teclado.
+// ==============================================================================
+
 #include <WiFi.h>
 #include <WebServer.h>
 #include <HTTPClient.h>
@@ -14,8 +25,8 @@
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
 // --- CREDENTIALS ---
-const char* ssid = "Casa 2.4G Modem";
-const char* password = "Sebasguapo2005";
+const char* ssid = "YOUR_WIFI_SSID";
+const char* password = "YOUR_WIFI_PASSWORD";
 
 // --- TIME CONFIGURATION (NTP) ---
 const char* ntpServer = "pool.ntp.org";
@@ -70,7 +81,7 @@ unsigned long lastDisplayUpdate = 0;
 bool buzzerActivo = true;
 
 // --- PYTHON SERVER ---
-const String pythonServerIP = "http://192.168.100.92:8000";
+const String pythonServerIP = "http://YOUR_PYTHON_SERVER_IP:8000";
 
 void setDisplayMessage(String msg) {
   displayMessage = msg;
@@ -138,6 +149,9 @@ void actualizarEstadoOLED() {
   display.display();
 }
 
+// ==============================================================================
+// SETUP: Configuración Inicial del Sistema
+// ==============================================================================
 void setup() {
   Serial.begin(115200);
   
@@ -205,6 +219,9 @@ void setup() {
   server.begin();
 }
 
+// ==============================================================================
+// LOGICA DE APERTURA
+// ==============================================================================
 void abrirPuerta() {
   if (!isUnlocked) {
     digitalWrite(relayPin, RELAY_DESBLOQUEADO); 
@@ -251,10 +268,14 @@ bool verifyPinOnline(String pin) {
   return false;
 }
 
+// ==============================================================================
+// CICLO PRINCIPAL (LOOP)
+// ==============================================================================
 void loop() {
+  // 1. Atender peticiones HTTP entrantes (ej. Python mandando /unlock)
   server.handleClient(); 
 
-  // Keypad Logic
+  // 2. Lógica del Teclado Matricial
   char key = keypad.getKey();
   if (key) {
     beepBuzzer(50); // Feedback beep

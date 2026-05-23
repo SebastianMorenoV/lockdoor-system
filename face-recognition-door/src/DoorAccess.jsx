@@ -1,3 +1,11 @@
+// ==============================================================================
+// LockDoor System - Componente de Escáner Facial (React)
+// ==============================================================================
+// Este componente maneja la cámara web del usuario.
+// Captura una foto cuando se presiona el botón y la envía al backend (Python)
+// para verificar si el rostro está autorizado.
+// ==============================================================================
+
 import React, { useRef, useCallback, useState } from "react";
 import Webcam from "react-webcam";
 
@@ -5,7 +13,7 @@ const DoorAccess = () => {
   const webcamRef = useRef(null);
   const [status, setStatus] = useState("Awaiting scan...");
 
-  // This function will eventually send the frame to your Python AI
+  // Función principal: Captura el frame de la cámara y lo envía a la API
   const captureFrame = useCallback(async () => {
     const imageSrc = webcamRef.current.getScreenshot();
     setStatus("Analizando rostro...");
@@ -22,7 +30,7 @@ const DoorAccess = () => {
 
       if (data.status === "success") {
         if (data.match) {
-          // ¡HAY MATCH!
+          // ¡HAY MATCH! El backend reconoció la cara
           if (data.hardware_reached) {
             setStatus(`🟢 ¡Acceso Concedido, ${data.name}! Puerta abierta ✅`);
           } else {
@@ -36,43 +44,43 @@ const DoorAccess = () => {
         // ERROR (No se vio la cara, mala iluminación, etc.)
         setStatus(`⚠️ ${data.message}`);
       }
-    } catch (error) {
-      console.error(error);
-      setStatus("❌ Error conectando con el servidor");
-    }
+  } catch (error) {
+    console.error(error);
+    setStatus("❌ Error conectando con el servidor");
+  }
 
-    // Resetear el mensaje después de 4 segundos
-    setTimeout(() => setStatus("Esperando escaneo..."), 4000);
-  }, [webcamRef]);
+  // Resetear el mensaje después de 4 segundos
+  setTimeout(() => setStatus("Esperando escaneo..."), 4000);
+}, [webcamRef]);
 
-  return (
-    <div style={styles.container}>
-      {/* Your custom door title */}
-      <h1 style={styles.title}>Sebastian's Lock Door</h1>
+return (
+  <div style={styles.container}>
+    {/* Your custom door title */}
+    <h1 style={styles.title}>Sebastian's Lock Door</h1>
 
-      {/* Webcam Feed Container */}
-      <div style={styles.webcamWrapper}>
-        <Webcam
-          audio={false}
-          ref={webcamRef}
-          screenshotFormat="image/jpeg"
-          width={640}
-          height={480}
-          videoConstraints={{
-            facingMode: "user", // Forces the front-facing camera
-          }}
-        />
-      </div>
-
-      {/* Manual trigger for testing before automating it */}
-      <button onClick={captureFrame} style={styles.button}>
-        Scan Face
-      </button>
-
-      {/* Status feedback for the user */}
-      <p style={styles.statusText}>{status}</p>
+    {/* Webcam Feed Container */}
+    <div style={styles.webcamWrapper}>
+      <Webcam
+        audio={false}
+        ref={webcamRef}
+        screenshotFormat="image/jpeg"
+        width={640}
+        height={480}
+        videoConstraints={{
+          facingMode: "user", // Forces the front-facing camera
+        }}
+      />
     </div>
-  );
+
+    {/* Botón manual para capturar y enviar la foto */}
+    <button onClick={captureFrame} style={styles.button}>
+      Scan Face
+    </button>
+
+    {/* Status feedback for the user */}
+    <p style={styles.statusText}>{status}</p>
+  </div>
+);
 };
 
 // Simple inline styles to keep it looking clean out of the box

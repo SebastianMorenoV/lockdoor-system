@@ -1,9 +1,18 @@
+// ==============================================================================
+// LockDoor System - Frontend Principal (React)
+// ==============================================================================
+// Este componente es el contenedor principal de la aplicación web.
+// Administra la navegación (pestañas) entre el Escáner de Puerta (DoorAccess)
+// y el Panel de Administración (AdminPanel).
+// ==============================================================================
+
 import React, { useState } from "react";
-import DoorAccess from "./DoorAccess.jsx"; // Your original scanner code!
-import AdminPanel from "./AdminPanel"; // The new file we just made!
+import DoorAccess from "./DoorAccess.jsx"; // Componente para escanear el rostro
+import AdminPanel from "./AdminPanel"; // Componente para administrar usuarios y ver logs
+
 
 const App = () => {
-  // State to track which page we are looking at
+  // Estado para controlar qué pestaña estamos viendo actualmente (scanner o admin)
   const [activeTab, setActiveTab] = useState("scanner");
 
   return (
@@ -22,7 +31,7 @@ const App = () => {
         </button>
       </nav>
 
-      {/* Render the correct component based on the active tab */}
+      {/* Área de Contenido: Muestra el componente correspondiente a la pestaña activa */}
       <div style={styles.contentArea}>{activeTab === "scanner" ? <DoorAccess /> : <AdminPanel />}</div>
     </div>
   );

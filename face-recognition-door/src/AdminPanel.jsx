@@ -1,3 +1,13 @@
+// ==============================================================================
+// LockDoor System - Panel de Administración (React)
+// ==============================================================================
+// Este componente permite al administrador gestionar el sistema:
+// - Registrar nuevos rostros (capturando de la cámara) y PINs.
+// - Ver, agregar (solo PIN) o eliminar usuarios existentes.
+// - Ver el historial (logs) de quién entró y a qué hora.
+// - Apagar/Prender la alarma (buzzer) del ESP32.
+// ==============================================================================
+
 import React, { useRef, useCallback, useState, useEffect } from "react";
 import Webcam from "react-webcam";
 

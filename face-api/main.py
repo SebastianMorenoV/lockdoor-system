@@ -1,3 +1,13 @@
+# ==============================================================================
+# LockDoor System - Backend (FastAPI)
+# ==============================================================================
+# Este script levanta un servidor web en el puerto 8000.
+# Se encarga de:
+# 1. Recibir fotos de la cámara web (desde React) y compararlas con las caras conocidas.
+# 2. Conectarse a MySQL para validar PINs ingresados en el teclado del ESP32.
+# 3. Guardar registros (logs) de quién entró y a qué hora.
+# ==============================================================================
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -5,11 +15,9 @@ import cv2
 import numpy as np  
 import base64
 import os
-import face_recognition # <-- ¡La librería mágica!
-import os
 import sys
-import requests # <-- NEW: Import this at the top of your file
-import mysql.connector
+import requests # Usado para enviar señales HTTP al ESP32
+import mysql.connector # Conexión a la base de datos
 from datetime import datetime
 from typing import Optional
 
@@ -22,15 +30,12 @@ models_path = os.path.join(venv_path, "face_recognition_models", "models")
 sys.path.append(models_path)
 os.environ['FACE_RECOGNITION_MODELS_PATH'] = models_path
 
-try:
-    import face_recognition
-    print("¡Logramos burlar al sistema! face_recognition cargado.")
-except ImportError:
-    print("Aún no lo ve, pero vamos a intentar inicializarlo manualmente...")
+# Importamos la librería DESPUÉS de agregar la ruta para que la encuentre
+# (Los comentarios "type: ignore" y "noqa" evitan que el IDE marque un falso error)
+import face_recognition # type: ignore # noqa: E402
+print("¡Logramos burlar al sistema! face_recognition cargado.")
 # ------------------------------
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 app = FastAPI()
 
 app.add_middleware(
@@ -47,7 +52,7 @@ os.makedirs("authorized_faces", exist_ok=True)
 DB_CONFIG = {
     "host": "localhost",
     "user": "root",
-    "password": "itson",
+    "password": "YOUR_MYSQL_PASSWORD", # Cambia esto por tu contraseña de MySQL
     "database": "lockdoor_db"
 }
 
@@ -56,10 +61,13 @@ def get_db():
     return mysql.connector.connect(**DB_CONFIG)
 
 
-ESP32_IP = "http://192.168.100.20"
+ESP32_IP = "http://YOUR_ESP32_IP" # Cambia esto por la IP del ESP32
 
-# --- MEMORIA DEL SISTEMA ---
-# Aquí guardaremos las "matemáticas" de las caras autorizadas
+# ==============================================================================
+# SISTEMA DE MEMORIA (ROSTROS)
+# ==============================================================================
+# Aquí guardaremos los vectores matemáticos de los rostros conocidos
+# para no tener que calcularlos cada vez que alguien intenta abrir.
 known_face_encodings = []
 known_face_names = []
 
@@ -104,10 +112,16 @@ class UserRegistration(BaseModel):
     name: str
     pin: str
 
-# --- RUTAS ORIGINALES ---
+# ==============================================================================
+# RUTAS DE LA API (ENDPOINTS)
+# ==============================================================================
 
 @app.post("/register")
 async def register_face(data: FaceRegistration):
+    """
+    Recibe una foto desde React y la guarda en la carpeta 'authorized_faces'.
+    Luego inserta al usuario en la base de datos.
+    """
     try:
         encoded_data = data.image.split(',')[1] if ',' in data.image else data.image
         img_bytes = base64.b64decode(encoded_data)
@@ -141,6 +155,10 @@ async def register_face(data: FaceRegistration):
 
 @app.post("/verify")
 def verify_face(data: FaceVerification):
+    """
+    Compara la foto recibida desde la cámara web (React) contra todas 
+    las caras que tenemos en memoria. Si hay coincidencia, le avisa al ESP32 que abra.
+    """
     try:
         encoded_data = data.image.split(',')[1] if ',' in data.image else data.image
         img_bytes = base64.b64decode(encoded_data)
